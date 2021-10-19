@@ -1,6 +1,5 @@
 //
 //  Cesium.swift
-//  CohesionPro
 //
 //  Created by Maryana on 19.10.2021.
 //
@@ -13,8 +12,7 @@ struct Cartesian {
     var z:             Double
 }
 
-struct Cartographic
-{
+struct Cartographic {
     var longitude:     Double
     var latitude:      Double
     var height:        Double
@@ -23,37 +21,17 @@ struct Cartographic
 
 class Cesium: NSObject {
     
+    static let EPSILON12 = 0.000000000001
+    static let EPSILON1 = 0.1
+    static let DEGREES_PER_RADIAN = 180.0 / Double.pi
+    
     static let shared = Cesium()
     
     override init() {
         super.init()
     }
     
-    let EPSILON12 = 0.000000000001
-    let EPSILON1 = 0.1
-    let DEGREES_PER_RADIAN = 180.0 / Double.pi
-
-    func magnitudeSquared(_ cartesian: Cartesian) -> Double {
-        return (cartesian.x * cartesian.x + cartesian.y * cartesian.y + cartesian.z * cartesian.z)
-    }
-
-    func magnitude(_ cartesian: Cartesian) -> Double  {
-      return sqrt(magnitudeSquared(cartesian))
-    }
-    
-    func normalize(_ cartesian: Cartesian) -> Cartesian {
-        
-        var result = Cartesian.init(x: 0, y: 0, z: 0)
-        let _magnitude = magnitude(cartesian)
-        
-        result.x = cartesian.x / _magnitude
-        result.y = cartesian.y / _magnitude
-        result.z = cartesian.z / _magnitude
-        
-        return result
-    }
-
-    func fromCartesian(cartesian: Cartesian) -> Cartographic? {
+    public func fromCartesian(cartesian: Cartesian) -> Cartographic? {
         let wgs84OneOverRadii = Cartesian.init(
             x:1.0 / 6378137.0,
             y:1.0 / 6378137.0,
@@ -87,22 +65,41 @@ class Cesium: NSObject {
         let height = sign(value: dot(left:h, right:cartesian)) * magnitude(h)
         
         return Cartographic.init(longitude: longitude * DEGREES_PER_RADIAN, latitude: latitude * DEGREES_PER_RADIAN, height: height)
-    };
+    }
+
+    private func magnitudeSquared(_ cartesian: Cartesian) -> Double {
+        return (cartesian.x * cartesian.x + cartesian.y * cartesian.y + cartesian.z * cartesian.z)
+    }
+
+    private func magnitude(_ cartesian: Cartesian) -> Double  {
+      return sqrt(magnitudeSquared(cartesian))
+    }
     
-    func dot(left: Cartesian, right: Cartesian) -> Double {
+    private func normalize(_ cartesian: Cartesian) -> Cartesian {
+        
+        var result = Cartesian.init(x: 0, y: 0, z: 0)
+        let _magnitude = magnitude(cartesian)
+        
+        result.x = cartesian.x / _magnitude
+        result.y = cartesian.y / _magnitude
+        result.z = cartesian.z / _magnitude
+        
+        return result
+    }
+
+    private func dot(left: Cartesian, right: Cartesian) -> Double {
       return left.x * right.x + left.y * right.y + left.z * right.z
     }
     
-    func sign(value: Double) -> Double {
-        let _value = +value // coerce to number
-        if (_value == 0){// || _value !== _value) {
-            // zero or NaN
+    private func sign(value: Double) -> Double {
+        let _value = +value
+        if (_value == 0) {
             return _value
         }
         return _value > 0 ? 1 : -1
     }
     
-    func subtract(left: Cartesian, right: Cartesian) -> Cartesian  {
+    private func subtract(left: Cartesian, right: Cartesian) -> Cartesian  {
         var result = Cartesian.init(x: 0, y: 0, z: 0)
         
         result.x = left.x - right.x
@@ -111,7 +108,7 @@ class Cesium: NSObject {
         return result
     }
     
-    func multiplyComponents (left: Cartesian, right: Cartesian) -> Cartesian {
+    private func multiplyComponents (left: Cartesian, right: Cartesian) -> Cartesian {
         var result = Cartesian.init(x: 0, y: 0, z: 0)
         result.x = left.x * right.x
         result.y = left.y * right.y
@@ -119,7 +116,7 @@ class Cesium: NSObject {
         return result
     }
     
-    func multiplyByScalar(cartesian: Cartesian, scalar: Double) -> Cartesian {
+    private func multiplyByScalar(cartesian: Cartesian, scalar: Double) -> Cartesian {
         var result = Cartesian.init(x: 0, y: 0, z: 0)
         result.x = cartesian.x * scalar
         result.y = cartesian.y * scalar
@@ -127,7 +124,7 @@ class Cesium: NSObject {
         return result
     }
     
-    func clone(cartesian: Cartesian) -> Cartesian {
+    private func clone(cartesian: Cartesian) -> Cartesian {
         var result = Cartesian.init(x: 0, y: 0, z: 0)
         result.x = cartesian.x
         result.y = cartesian.y
@@ -136,12 +133,7 @@ class Cesium: NSObject {
     }
 
     
-    func scaleToGeodeticSurface(
-        cartesian: Cartesian,
-        oneOverRadii: Cartesian,
-        oneOverRadiiSquared: Cartesian,
-        centerToleranceSquared: Double
-    ) -> Cartesian? {
+    private func scaleToGeodeticSurface (cartesian: Cartesian, oneOverRadii: Cartesian, oneOverRadiiSquared: Cartesian, centerToleranceSquared: Double) -> Cartesian? {
         
         var scaleToGeodeticSurfaceIntersection = Cartesian.init(x: 0, y: 0, z: 0)
         var scaleToGeodeticSurfaceGradient = Cartesian.init(x: 0, y: 0, z: 0)
@@ -216,9 +208,7 @@ class Cesium: NSObject {
             zMultiplier3 = zMultiplier2 * zMultiplier
             
             func_res = x2 * xMultiplier2 + y2 * yMultiplier2 + z2 * zMultiplier2 - 1.0
-            
-            // "denominator" here refers to the use of this expression in the velocity and acceleration
-            // computations in the sections to follow.
+
             denominator = x2 * xMultiplier3 * oneOverRadiiSquaredX + y2 * yMultiplier3 * oneOverRadiiSquaredY + z2 * zMultiplier3 * oneOverRadiiSquaredZ
             
             let derivative = -2.0 * denominator
