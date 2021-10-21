@@ -27,9 +27,6 @@ From Cartographic coordinates to Cartesian:
     
     // if you set ellipsoid to 'nil' -> it will be used Earth-sized ellipsoid by WGS84 standard
   
-    if let cartesianPoint = Cesium.shared.cartesianFromCartographic(carto: carto, ellipsoid: nil)
-    {
-       // do what you want to with Cartesian
-    }
-  
+    let cartesianPoint = Cesium.shared.cartesianFromCartographic(carto: carto, ellipsoid: nil)
+
 </code>
