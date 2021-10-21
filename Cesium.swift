@@ -21,9 +21,11 @@ struct Cartographic {
 
 class Cesium: NSObject {
     
-    static let EPSILON12 = 0.000000000001
-    static let EPSILON1 = 0.1
-    static let DEGREES_PER_RADIAN = 180.0 / Double.pi
+    let EPSILON12 = 0.000000000001
+    let EPSILON1 = 0.1
+    let DEGREES_PER_RADIAN = 180.0 / Double.pi
+    let RADIANS_PER_DEGREE = Double.pi / 180.0
+    let wgs84RadiiSquared = Cartesian(x:6378137.0 * 6378137.0, y:6378137.0 * 6378137.0, z:6356752.3142451793 * 6356752.3142451793)
     
     static let shared = Cesium()
     
@@ -31,7 +33,7 @@ class Cesium: NSObject {
         super.init()
     }
     
-    public func fromCartesian(cartesian: Cartesian) -> Cartographic? {
+    public func cartographicFromCartesian(cartesian: Cartesian) -> Cartographic? {
         let wgs84OneOverRadii = Cartesian.init(
             x:1.0 / 6378137.0,
             y:1.0 / 6378137.0,
@@ -66,6 +68,59 @@ class Cesium: NSObject {
         
         return Cartographic.init(longitude: longitude * DEGREES_PER_RADIAN, latitude: latitude * DEGREES_PER_RADIAN, height: height)
     }
+    
+    public func cartesianFromCartographic(carto: Cartographic, ellipsoid: Cartesian? = nil) -> Cartesian {
+
+        let _longitude = toRadians(degrees: carto.longitude)
+        let _latitude = toRadians(degrees: carto.latitude)
+        return fromRadians(longitude: _longitude, latitude: _latitude, height: carto.height, ellipsoid: ellipsoid)
+    }
+    
+    
+    //MARK: Inner methods
+    
+    func toRadians(degrees: Double) -> Double{
+      return degrees * RADIANS_PER_DEGREE
+    }
+    
+    func fromRadians(longitude: Double, latitude: Double, height: Double = 0, ellipsoid: Cartesian? = nil) -> Cartesian {
+        
+        let radiiSquared = wgs84RadiiSquared
+        
+        var scratchN = Cartesian(x: 0, y: 0, z: 0)
+        var scratchK = Cartesian(x: 0, y: 0, z: 0)
+        
+        let cosLatitude = cos(latitude)
+        scratchN.x = cosLatitude * cos(longitude)
+        scratchN.y = cosLatitude * sin(longitude)
+        scratchN.z = sin(latitude)
+        scratchN = normalize(scratchN)
+        
+        scratchK = multiplyComponents(left: radiiSquared, right: scratchN)
+        let gamma = sqrt(dot(left: scratchN, right: scratchK))
+        scratchK = divideByScalar(cartesian: scratchK, scalar: gamma)
+        scratchN = multiplyByScalar(cartesian: scratchN, scalar: height)
+        
+        var result = Cartesian(x: 0, y: 0, z: 0)
+        result = add(left: scratchK, right: scratchN)
+        return result
+    }
+    
+    func divideByScalar(cartesian: Cartesian, scalar: Double) -> Cartesian {
+        var result = Cartesian(x: 0, y: 0, z: 0)
+        result.x = cartesian.x / scalar
+        result.y = cartesian.y / scalar
+        result.z = cartesian.z / scalar
+        return result
+    }
+    
+    func add(left: Cartesian, right: Cartesian) -> Cartesian {
+        var result = Cartesian(x: 0, y: 0, z: 0)
+        result.x = left.x + right.x
+        result.y = left.y + right.y
+        result.z = left.z + right.z
+        return result
+      }
 
     private func magnitudeSquared(_ cartesian: Cartesian) -> Double {
         return (cartesian.x * cartesian.x + cartesian.y * cartesian.y + cartesian.z * cartesian.z)
@@ -226,3 +281,4 @@ class Cesium: NSObject {
     }
 
 }
+
